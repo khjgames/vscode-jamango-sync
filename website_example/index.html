@@ -81,6 +81,9 @@
 
         function connectToExtension() {
             try {
+                // Test HTTPS server accessibility first
+                testHttpsServer();
+                
                 // Try different WebSocket URLs for the VS Code extension
                 // Include both HTTP and HTTPS for maximum compatibility
                 const wsUrls = [
@@ -135,8 +138,23 @@
                         }, 2000);
                     };
                     
-                    websocket.onerror = () => {
-                        console.log(`Failed to connect to ${wsUrl}`);
+                    websocket.onerror = (error) => {
+                        console.error(`❌ WebSocket connection failed to ${wsUrl}:`, error);
+                        console.error('Error details:', {
+                            type: error.type,
+                            message: error.message,
+                            target: error.target ? error.target.readyState : 'unknown'
+                        });
+                        
+                        // Log specific error information for HTTPS connections
+                        if (wsUrl.startsWith('wss://')) {
+                            console.error('🔐 HTTPS WebSocket connection failed. This might be due to:');
+                            console.error('   - Self-signed certificate not trusted by browser');
+                            console.error('   - Certificate validation issues');
+                            console.error('   - Browser security policies');
+                            console.error('   - Port 8443 not accessible');
+                        }
+                        
                         websocket.close();
                     };
                 }
@@ -364,6 +382,22 @@
             }
             
             statusElement.textContent = message;
+        }
+
+        // Test HTTPS server accessibility
+        function testHttpsServer() {
+            console.log('🔍 Testing HTTPS server accessibility...');
+            
+            // Try to fetch from the HTTPS server to test basic connectivity
+            fetch('https://localhost:8443', {
+                method: 'GET',
+                mode: 'no-cors' // This will fail but we can see the error
+            }).then(response => {
+                console.log('✅ HTTPS server is accessible:', response);
+            }).catch(error => {
+                console.error('❌ HTTPS server test failed:', error);
+                console.error('This suggests the HTTPS server might not be running or accessible');
+            });
         }
 
         // Cleanup on page unload
