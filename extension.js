@@ -112,9 +112,21 @@ function stopSync() {
             fileWatcher = null;
         }
 
-        // Close WebSocket connection
+        // Close WebSocket connections
         if (websocketServer) {
-            websocketServer.close();
+            if (Array.isArray(websocketServer)) {
+                // Multiple servers
+                websocketServer.forEach(server => {
+                    try {
+                        server.close();
+                    } catch (error) {
+                        console.error('Error closing server:', error);
+                    }
+                });
+            } else {
+                // Single server (backward compatibility)
+                websocketServer.close();
+            }
             websocketServer = null;
         }
 
@@ -167,45 +179,85 @@ function startFileWatcher(workspacePath, extensions) {
 
 function connectToWebsite(websiteUrl) {
     try {
-        // Create a local WebSocket server for the website to connect to
-        websocketServer = new WebSocket.Server({ port: 8080 });
+        // Create both HTTP and HTTPS WebSocket servers for compatibility
+        const servers = [];
         
-        websocketServer.on('connection', (ws) => {
-            console.log('🔗 Website connected to VS Code extension');
-            connectedClients.add(ws);
-            
-            // Send initial connection confirmation
-            ws.send(JSON.stringify({
-                type: 'connection',
-                message: 'Connected to VS Code extension',
-                timestamp: new Date().toISOString()
-            }));
+        // HTTP WebSocket server (for local development)
+        try {
+            const httpServer = new WebSocket.Server({ port: 8080 });
+            servers.push(httpServer);
+            console.log('🔗 HTTP WebSocket server listening on ws://localhost:8080');
+        } catch (error) {
+            console.log('⚠️ HTTP WebSocket server port 8080 already in use');
+        }
+        
+        // HTTPS WebSocket server (for GitHub Pages compatibility)
+        try {
+            const httpsServer = new WebSocket.Server({ port: 8443 });
+            servers.push(httpsServer);
+            console.log('🔗 HTTPS WebSocket server listening on wss://localhost:8443');
+        } catch (error) {
+            console.log('⚠️ HTTPS WebSocket server port 8443 already in use');
+        }
+        
+        // If no servers were created, try alternative ports
+        if (servers.length === 0) {
+            try {
+                const fallbackServer = new WebSocket.Server({ port: 8081 });
+                servers.push(fallbackServer);
+                console.log('🔗 Fallback WebSocket server listening on ws://localhost:8081');
+            } catch (error) {
+                throw new Error('No available ports for WebSocket servers');
+            }
+        }
+        
+        // Set up connection handling for all servers
+        servers.forEach(server => {
+            server.on('connection', (ws) => {
+                console.log('🔗 Website connected to VS Code extension');
+                connectedClients.add(ws);
+                
+                // Send initial connection confirmation
+                ws.send(JSON.stringify({
+                    type: 'connection',
+                    message: 'Connected to VS Code extension',
+                    timestamp: new Date().toISOString()
+                }));
 
-            ws.on('message', (data) => {
-                try {
-                    const message = JSON.parse(data);
-                    handleWebsiteMessage(message, ws);
-                } catch (error) {
-                    console.error('Error parsing website message:', error);
-                }
-            });
+                ws.on('message', (data) => {
+                    try {
+                        const message = JSON.parse(data);
+                        handleWebsiteMessage(message, ws);
+                    } catch (error) {
+                        console.error('Error parsing website message:', error);
+                    }
+                });
 
-            ws.on('close', () => {
-                console.log('❌ Website disconnected from VS Code extension');
-                connectedClients.delete(ws);
-            });
+                ws.on('close', () => {
+                    console.log('❌ Website disconnected from VS Code extension');
+                    connectedClients.delete(ws);
+                });
 
-            ws.on('error', (error) => {
-                console.error('WebSocket error:', error);
-                connectedClients.delete(ws);
+                ws.on('error', (error) => {
+                    console.error('WebSocket error:', error);
+                    connectedClients.delete(ws);
+                });
             });
         });
-
-        console.log('🔗 Local WebSocket server listening on ws://localhost:8080');
-        vscode.window.showInformationMessage('🔗 WebSocket server ready! Website can connect to ws://localhost:8080');
+        
+        // Store all servers for cleanup
+        websocketServer = servers;
+        
+        const serverInfo = servers.map((_, i) => {
+            const port = i === 0 ? 8080 : i === 1 ? 8443 : 8081;
+            const protocol = i === 1 ? 'wss' : 'ws';
+            return `${protocol}://localhost:${port}`;
+        }).join(', ');
+        
+        vscode.window.showInformationMessage(`🔗 WebSocket servers ready! Website can connect to: ${serverInfo}`);
 
     } catch (error) {
-        console.error('Error creating WebSocket server:', error);
+        console.error('Error creating WebSocket servers:', error);
         throw error;
     }
 }
