@@ -1,5 +1,5 @@
 // Jamango Sync Public WebSocket Proxy for Railway
-// This bridges HTTPS websites to localhost WebSocket servers
+// This bridges HTTPS websites to local VS Code extension WebSocket servers
 
 const express = require('express');
 const WebSocket = require('ws');
@@ -16,6 +16,7 @@ app.get('/', (req, res) => {
     res.json({
         status: 'Jamango Sync WebSocket Proxy Running',
         connections: proxyConnections.size,
+        extensions: registeredExtensions.size,
         timestamp: new Date().toISOString(),
         message: 'WebSocket proxy ready for GitHub Pages compatibility',
         platform: 'Railway'
@@ -28,6 +29,7 @@ app.get('/health', (req, res) => {
         status: 'healthy',
         uptime: process.uptime(),
         connections: proxyConnections.size,
+        extensions: registeredExtensions.size,
         memory: process.memoryUsage()
     });
 });
@@ -41,49 +43,79 @@ const server = app.listen(PORT, () => {
 // Create WebSocket server
 const wss = new WebSocket.Server({ server });
 
-// Track proxy connections
+// Track proxy connections and registered extensions
 const proxyConnections = new Map();
+const registeredExtensions = new Map();
 
 wss.on('connection', (ws, req) => {
     console.log('🔗 New proxy connection from:', req.headers.origin);
     
     let localConnection = null;
     let connectionId = Date.now() + Math.random();
+    let isExtension = false;
     
-    proxyConnections.set(connectionId, { ws, localConnection });
+    proxyConnections.set(connectionId, { ws, localConnection, isExtension });
     
     ws.on('message', (data) => {
         try {
             const message = JSON.parse(data);
             
-            if (message.type === 'connect_local') {
-                // Website wants to connect to localhost
-                console.log('🔗 Connecting to localhost:', message.localhost);
-                
-                localConnection = new WebSocket(message.localhost);
-                
-                localConnection.on('open', () => {
-                    console.log('✅ Connected to localhost WebSocket');
-                    ws.send(JSON.stringify({ type: 'local_connected' }));
+            if (message.type === 'register_extension') {
+                // VS Code extension is registering itself
+                console.log('🔗 VS Code extension registered:', message.localhost);
+                isExtension = true;
+                registeredExtensions.set(connectionId, {
+                    ws,
+                    localhost: message.localhost
                 });
+                proxyConnections.get(connectionId).isExtension = true;
                 
-                localConnection.on('message', (localData) => {
-                    // Forward local data to website
-                    ws.send(localData);
-                });
+                ws.send(JSON.stringify({ type: 'extension_registered' }));
                 
-                localConnection.on('close', () => {
-                    console.log('❌ Localhost connection closed');
-                    ws.send(JSON.stringify({ type: 'local_disconnected' }));
-                });
+            } else if (message.type === 'connect_local') {
+                // Website wants to connect to a local extension
+                console.log('🔗 Website requesting connection to localhost');
                 
-                localConnection.on('error', (error) => {
-                    console.error('❌ Localhost connection error:', error);
-                    ws.send(JSON.stringify({ type: 'local_error', error: error.message }));
-                });
+                // Find an available extension
+                const availableExtension = Array.from(registeredExtensions.values())[0];
+                if (availableExtension) {
+                    console.log('🔗 Connecting to extension at:', availableExtension.localhost);
+                    
+                    localConnection = new WebSocket(availableExtension.localhost);
+                    
+                    localConnection.on('open', () => {
+                        console.log('✅ Connected to VS Code extension');
+                        ws.send(JSON.stringify({ type: 'local_connected' }));
+                    });
+                    
+                    localConnection.on('message', (localData) => {
+                        // Forward extension data to website
+                        ws.send(localData);
+                    });
+                    
+                    localConnection.on('close', () => {
+                        console.log('❌ VS Code extension connection closed');
+                        ws.send(JSON.stringify({ type: 'local_disconnected' }));
+                    });
+                    
+                    localConnection.on('error', (error) => {
+                        console.error('❌ VS Code extension connection error:', error);
+                        ws.send(JSON.stringify({ type: 'local_error', error: error.message }));
+                    });
+                    
+                    // Notify the extension that a website connected
+                    availableExtension.ws.send(JSON.stringify({ type: 'website_connected' }));
+                    
+                } else {
+                    console.log('❌ No VS Code extensions available');
+                    ws.send(JSON.stringify({ 
+                        type: 'local_error', 
+                        error: 'No VS Code extensions available. Please start the extension first.' 
+                    }));
+                }
                 
             } else if (localConnection && localConnection.readyState === WebSocket.OPEN) {
-                // Forward website data to localhost
+                // Forward website data to VS Code extension
                 localConnection.send(data);
             }
             
@@ -98,6 +130,9 @@ wss.on('connection', (ws, req) => {
             localConnection.close();
         }
         proxyConnections.delete(connectionId);
+        if (isExtension) {
+            registeredExtensions.delete(connectionId);
+        }
     });
     
     ws.on('error', (error) => {
@@ -106,6 +141,9 @@ wss.on('connection', (ws, req) => {
             localConnection.close();
         }
         proxyConnections.delete(connectionId);
+        if (isExtension) {
+            registeredExtensions.delete(connectionId);
+        }
     });
 });
 

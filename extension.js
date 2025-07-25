@@ -295,6 +295,43 @@ function connectToWebsite(websiteUrl) {
         }).join(', ');
         
         vscode.window.showInformationMessage(`🔗 WebSocket servers ready! Website can connect to: ${serverInfo}`);
+        
+        // Also connect to Railway proxy for GitHub Pages compatibility
+        try {
+            console.log('🔗 Connecting to Railway proxy for GitHub Pages compatibility...');
+            publicWebSocketClient = new WebSocket(PUBLIC_PROXY_URL);
+            
+            publicWebSocketClient.on('open', () => {
+                console.log('✅ Connected to Railway proxy');
+                // Register this extension with the proxy
+                publicWebSocketClient.send(JSON.stringify({
+                    type: 'register_extension',
+                    localhost: `ws://localhost:${LOCAL_WEBSOCKET_PORT}`
+                }));
+            });
+            
+            publicWebSocketClient.on('message', (data) => {
+                try {
+                    const message = JSON.parse(data);
+                    if (message.type === 'website_connected') {
+                        console.log('🌐 Website connected through Railway proxy');
+                    }
+                } catch (error) {
+                    console.error('Error parsing proxy message:', error);
+                }
+            });
+            
+            publicWebSocketClient.on('close', () => {
+                console.log('❌ Railway proxy connection closed');
+            });
+            
+            publicWebSocketClient.on('error', (error) => {
+                console.error('❌ Railway proxy connection error:', error);
+            });
+            
+        } catch (error) {
+            console.error('Error connecting to Railway proxy:', error);
+        }
 
     } catch (error) {
         console.error('Error creating WebSocket servers:', error);

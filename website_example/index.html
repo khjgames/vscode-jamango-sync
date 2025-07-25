@@ -106,20 +106,49 @@
                         
                         websocket.onopen = () => {
                             extensionConnected = true;
-                            updateSyncStatus('🔗 Connected to VS Code extension! Real-time sync active.');
                             
-                            // Request initial file sync
-                            setTimeout(() => {
+                            if (method.url.startsWith('wss://')) {
+                                // Using Railway proxy - connect to localhost through proxy
+                                updateSyncStatus('🔗 Connected to Railway proxy! Connecting to VS Code extension...');
                                 websocket.send(JSON.stringify({
-                                    type: 'syncRequest'
+                                    type: 'connect_local',
+                                    localhost: 'ws://localhost:8080'
                                 }));
-                            }, 1000);
+                            } else {
+                                // Direct connection
+                                updateSyncStatus('🔗 Connected to VS Code extension! Real-time sync active.');
+                                
+                                // Request initial file sync
+                                setTimeout(() => {
+                                    websocket.send(JSON.stringify({
+                                        type: 'syncRequest'
+                                    }));
+                                }, 1000);
+                            }
                         };
                         
                         websocket.onmessage = (event) => {
                             try {
                                 const data = JSON.parse(event.data);
-                                handleExtensionMessage(data);
+                                
+                                // Handle proxy messages
+                                if (data.type === 'local_connected') {
+                                    updateSyncStatus('🔗 Connected to VS Code extension! Real-time sync active.');
+                                    
+                                    // Request initial file sync through proxy
+                                    setTimeout(() => {
+                                        websocket.send(JSON.stringify({
+                                            type: 'syncRequest'
+                                        }));
+                                    }, 1000);
+                                } else if (data.type === 'local_disconnected') {
+                                    updateSyncStatus('❌ VS Code extension disconnected');
+                                } else if (data.type === 'local_error') {
+                                    updateSyncStatus(`❌ VS Code extension error: ${data.error}`);
+                                } else {
+                                    // Regular extension message
+                                    handleExtensionMessage(data);
+                                }
                             } catch (error) {
                                 console.error('Error parsing extension message:', error);
                             }
