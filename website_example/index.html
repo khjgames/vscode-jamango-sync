@@ -81,82 +81,65 @@
 
         function connectToExtension() {
             try {
-                // Test HTTPS server accessibility first
-                testHttpsServer();
-                
-                // Try different WebSocket URLs for the VS Code extension
-                // Include both HTTP and HTTPS for maximum compatibility
-                const wsUrls = [
-                    'wss://localhost:8443',  // HTTPS WebSocket server (for GitHub Pages)
-                    'ws://localhost:8080',   // HTTP WebSocket server (for local development)
-                    'ws://127.0.0.1:8080',   // Alternative localhost HTTP
-                    'ws://localhost:8081',   // Fallback HTTP port
+                // Try different connection methods
+                const connectionMethods = [
+                    { type: 'websocket', url: 'wss://jamango-sync-proxy-private-production.up.railway.app' },  // Your Railway proxy
+                    { type: 'websocket', url: 'ws://localhost:8080' },
+                    { type: 'websocket', url: 'ws://127.0.0.1:8080' },
+                    { type: 'websocket', url: 'ws://localhost:8081' }
                 ];
 
-                let currentUrlIndex = 0;
+                let currentMethodIndex = 0;
                 
                 function tryConnect() {
-                    if (currentUrlIndex >= wsUrls.length) {
+                    if (currentMethodIndex >= connectionMethods.length) {
                         updateSyncStatus('⚠️ VS Code extension not found. Make sure the extension is installed and running.');
                         return;
                     }
 
-                    const wsUrl = wsUrls[currentUrlIndex];
-                    console.log(`Trying to connect to: ${wsUrl}`);
+                    const method = connectionMethods[currentMethodIndex];
+                    console.log(`Trying connection method: ${method.type} to ${method.url}`);
                     
-                    websocket = new WebSocket(wsUrl);
-                    
-                    websocket.onopen = () => {
-                        extensionConnected = true;
-                        updateSyncStatus('🔗 Connected to VS Code extension! Real-time sync active.');
+                    if (method.type === 'websocket') {
+                        // Try WebSocket connection
+                        websocket = new WebSocket(method.url);
                         
-                        // Request initial file sync - extension will use its workspace
-                        setTimeout(() => {
-                            websocket.send(JSON.stringify({
-                                type: 'syncRequest'
-                            }));
-                        }, 1000);
-                    };
-                    
-                    websocket.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data);
-                            handleExtensionMessage(data);
-                        } catch (error) {
-                            console.error('Error parsing extension message:', error);
-                        }
-                    };
-                    
-                    websocket.onclose = () => {
-                        extensionConnected = false;
-                        updateSyncStatus('❌ VS Code extension disconnected. Trying to reconnect...');
+                        websocket.onopen = () => {
+                            extensionConnected = true;
+                            updateSyncStatus('🔗 Connected to VS Code extension! Real-time sync active.');
+                            
+                            // Request initial file sync
+                            setTimeout(() => {
+                                websocket.send(JSON.stringify({
+                                    type: 'syncRequest'
+                                }));
+                            }, 1000);
+                        };
                         
-                        // Try to reconnect after a delay
-                        setTimeout(() => {
-                            currentUrlIndex++;
-                            tryConnect();
-                        }, 2000);
-                    };
-                    
-                    websocket.onerror = (error) => {
-                        console.error(`❌ WebSocket connection failed to ${wsUrl}:`, error);
-                        console.error('Error details:', {
-                            type: error.type,
-                            message: error.message,
-                            target: error.target ? error.target.readyState : 'unknown'
-                        });
+                        websocket.onmessage = (event) => {
+                            try {
+                                const data = JSON.parse(event.data);
+                                handleExtensionMessage(data);
+                            } catch (error) {
+                                console.error('Error parsing extension message:', error);
+                            }
+                        };
                         
-                        // Log specific error information for HTTPS connections
-                        if (wsUrl.startsWith('wss://')) {
-                            console.error('🔐 HTTPS WebSocket connection failed. This might be due to:');
-                            console.error('   - Self-signed certificate not trusted by browser');
-                            console.error('   - Certificate validation issues');
-                            console.error('   - Browser security policies');
-                            console.error('   - Port 8443 not accessible');
-                        }
+                        websocket.onclose = () => {
+                            extensionConnected = false;
+                            updateSyncStatus('❌ VS Code extension disconnected. Trying to reconnect...');
+                            
+                            setTimeout(() => {
+                                currentMethodIndex++;
+                                tryConnect();
+                            }, 2000);
+                        };
                         
-                        websocket.close();
-                    };
+                                                websocket.onerror = (error) => {
+                            console.error(`❌ WebSocket connection failed to ${method.url}:`, error);
+                            websocket.close();
+                        };
+                    }
                 }
                 
                 tryConnect();
@@ -211,6 +194,8 @@
                 }
             }, 10000);
         }
+
+
 
         // --- Jamango Explorer/Preview Widget ---
         let jamangoFileTree = {};
@@ -384,21 +369,7 @@
             statusElement.textContent = message;
         }
 
-        // Test HTTPS server accessibility
-        function testHttpsServer() {
-            console.log('🔍 Testing HTTPS server accessibility...');
-            
-            // Try to fetch from the HTTPS server to test basic connectivity
-            fetch('https://localhost:8443', {
-                method: 'GET',
-                mode: 'no-cors' // This will fail but we can see the error
-            }).then(response => {
-                console.log('✅ HTTPS server is accessible:', response);
-            }).catch(error => {
-                console.error('❌ HTTPS server test failed:', error);
-                console.error('This suggests the HTTPS server might not be running or accessible');
-            });
-        }
+
 
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {

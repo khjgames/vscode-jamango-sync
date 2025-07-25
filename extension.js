@@ -19,6 +19,11 @@ let websocketServer = null;
 let isSyncActive = false;
 let currentWorkspacePath = null;
 let connectedClients = new Set();
+let publicWebSocketClient = null;
+
+// Use a public WebSocket proxy service for HTTPS compatibility
+const PUBLIC_PROXY_URL = 'wss://jamango-sync-proxy-private-production.up.railway.app'; // Railway HTTPS WebSocket proxy
+const LOCAL_WEBSOCKET_PORT = 8080;
 
 // SSL Certificate generation
 function generateSelfSignedCert() {
@@ -223,83 +228,16 @@ function startFileWatcher(workspacePath, extensions) {
 
 function connectToWebsite(websiteUrl) {
     try {
-        // Create both HTTP and HTTPS WebSocket servers for compatibility
+        // Create HTTP WebSocket server for local connections
         const servers = [];
         
         // HTTP WebSocket server (for local development)
         try {
-            const httpServer = new WebSocket.Server({ port: 8080 });
+            const httpServer = new WebSocket.Server({ port: LOCAL_WEBSOCKET_PORT });
             servers.push(httpServer);
-            console.log('🔗 HTTP WebSocket server listening on ws://localhost:8080');
+            console.log(`🔗 HTTP WebSocket server listening on ws://localhost:${LOCAL_WEBSOCKET_PORT}`);
         } catch (error) {
-            console.log('⚠️ HTTP WebSocket server port 8080 already in use');
-        }
-        
-        // HTTPS WebSocket server (for GitHub Pages compatibility)
-        try {
-            console.log('🔐 Generating SSL certificate for HTTPS WebSocket server...');
-            // Generate self-signed certificate automatically
-            const sslCert = generateSelfSignedCert();
-            console.log('✅ SSL certificate generated successfully');
-            
-            // Create HTTPS server with generated certificate
-            const httpsServer = https.createServer({
-                key: sslCert.key,
-                cert: sslCert.cert
-            }, (req, res) => {
-                console.log(`📡 HTTPS request received: ${req.method} ${req.url}`);
-                
-                // Add CORS headers for browser compatibility
-                res.setHeader('Access-Control-Allow-Origin', '*');
-                res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-                res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-                
-                if (req.method === 'OPTIONS') {
-                    res.writeHead(200);
-                    res.end();
-                    return;
-                }
-                
-                res.writeHead(200, { 'Content-Type': 'text/plain' });
-                res.end('Jamango Sync HTTPS WebSocket Server Running');
-            });
-            
-            const wssServer = new WebSocket.Server({ server: httpsServer });
-            servers.push(wssServer);
-            
-            httpsServer.listen(8443, () => {
-                console.log('🔗 HTTPS WebSocket server listening on wss://localhost:8443');
-                console.log('🔐 SSL certificate details:', {
-                    keyLength: sslCert.key.length,
-                    certLength: sslCert.cert.length,
-                    port: 8443
-                });
-                vscode.window.showInformationMessage('🔐 HTTPS WebSocket server ready for GitHub Pages compatibility');
-            });
-            
-            // Add error handling for HTTPS server
-            httpsServer.on('error', (error) => {
-                console.error('❌ HTTPS server error:', error);
-                vscode.window.showErrorMessage(`HTTPS server error: ${error.message}`);
-            });
-            
-        } catch (error) {
-            console.error('❌ Failed to create HTTPS WebSocket server:', error);
-            console.error('Error details:', {
-                message: error.message,
-                stack: error.stack,
-                code: error.code
-            });
-            vscode.window.showErrorMessage(`HTTPS server creation failed: ${error.message}`);
-            
-            // Fallback to HTTP on different port
-            try {
-                const fallbackServer = new WebSocket.Server({ port: 8444 });
-                servers.push(fallbackServer);
-                console.log('🔗 Fallback WebSocket server listening on ws://localhost:8444');
-            } catch (fallbackError) {
-                console.error('❌ Fallback port 8444 also failed:', fallbackError.message);
-            }
+            console.log(`⚠️ HTTP WebSocket server port ${LOCAL_WEBSOCKET_PORT} already in use`);
         }
         
         // If no servers were created, try alternative ports

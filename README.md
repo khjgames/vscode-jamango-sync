@@ -19,13 +19,13 @@ Real-time file synchronization between VS Code and the Jamango website platform.
 Click "Sync Folder" to connect to your VS Code extension and see real-time file synchronization in action!
 
 ### 🔐 HTTPS Compatibility
-The extension automatically generates self-signed SSL certificates and creates both HTTP and HTTPS WebSocket servers for maximum compatibility:
+The extension creates a local HTTP WebSocket server and uses a public HTTPS proxy service for GitHub Pages compatibility:
 
-- **HTTPS websites** (like GitHub Pages) connect via `wss://localhost:8443`
-- **Local development** connects via `ws://localhost:8080`
-- **Automatic fallback** to alternative ports if needed
+- **Local development**: Connect directly to `ws://localhost:8080`
+- **GitHub Pages**: Connect via public HTTPS proxy service
+- **Automatic fallback**: Tries multiple connection methods
 
-No additional setup required - the extension handles SSL certificate generation automatically!
+**For GitHub Pages users**: The extension automatically bridges your local files to the HTTPS website through a secure proxy service.
 
 ## About
 Jamango Sync is a community-created VS Code extension that provides real-time file synchronization between your local development environment and the Jamango website. This extension monitors your workspace for file changes and automatically syncs both file names and file contents to your Jamango project, including all subfolders and maintaining the complete folder structure. This is an unofficial tool created independently by a community member.
