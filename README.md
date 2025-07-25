@@ -12,6 +12,12 @@
 
 Real-time file synchronization between VS Code and the Jamango website platform. Automatically syncs your script files for seamless development workflow.
 
+## 🧪 Test the Extension
+
+**Try the live demo website:** [https://khjgames.github.io/vscode-jamango-sync/website_example/index.html](https://khjgames.github.io/vscode-jamango-sync/website_example/index.html)
+
+Click "Sync Folder" to connect to your VS Code extension and see real-time file synchronization in action!
+
 ## About
 Jamango Sync is a community-created VS Code extension that provides real-time file synchronization between your local development environment and the Jamango website. This extension monitors your workspace for file changes and automatically syncs both file names and file contents to your Jamango project, including all subfolders and maintaining the complete folder structure. This is an unofficial tool created independently by a community member.
 
