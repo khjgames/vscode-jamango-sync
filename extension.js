@@ -329,6 +329,24 @@ function connectToWebsite(websiteUrl) {
                     const message = JSON.parse(data);
                     if (message.type === 'website_connected') {
                         console.log('🌐 Website connected through Railway proxy');
+                        // Add the proxy connection as a client
+                        connectedClients.add(publicWebSocketClient);
+                    } else if (message.type === 'syncRequest') {
+                        // Website is requesting file sync through proxy
+                        console.log('📁 Website requested file sync through proxy');
+                        const config = vscode.workspace.getConfiguration('jamango-sync');
+                        const watchExtensions = config.get('watchExtensions', ['.json', '.css', '.html', '.txt', '.ts', '.tsx']);
+                        
+                        getFileList(currentWorkspacePath, watchExtensions).then(fileData => {
+                            sendFileList(fileData);
+                        });
+                    } else {
+                        // Forward other messages to local clients
+                        connectedClients.forEach(client => {
+                            if (client !== publicWebSocketClient && client.readyState === WebSocket.OPEN) {
+                                client.send(JSON.stringify(message));
+                            }
+                        });
                     }
                 } catch (error) {
                     console.error('Error parsing proxy message:', error);

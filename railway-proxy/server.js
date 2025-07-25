@@ -79,29 +79,17 @@ wss.on('connection', (ws, req) => {
                 // Find an available extension
                 const availableExtension = Array.from(registeredExtensions.values())[0];
                 if (availableExtension) {
-                    console.log('🔗 Connecting to extension at:', availableExtension.localhost);
+                    console.log('🔗 Bridging website to VS Code extension');
                     
-                    localConnection = new WebSocket(availableExtension.localhost);
+                    // Instead of trying to connect to localhost (which won't work),
+                    // we'll use the extension's connection as the bridge
+                    localConnection = availableExtension.ws;
                     
-                    localConnection.on('open', () => {
-                        console.log('✅ Connected to VS Code extension');
-                        ws.send(JSON.stringify({ type: 'local_connected' }));
-                    });
+                    // Mark this connection as bridged
+                    proxyConnections.get(connectionId).localConnection = localConnection;
                     
-                    localConnection.on('message', (localData) => {
-                        // Forward extension data to website
-                        ws.send(localData);
-                    });
-                    
-                    localConnection.on('close', () => {
-                        console.log('❌ VS Code extension connection closed');
-                        ws.send(JSON.stringify({ type: 'local_disconnected' }));
-                    });
-                    
-                    localConnection.on('error', (error) => {
-                        console.error('❌ VS Code extension connection error:', error);
-                        ws.send(JSON.stringify({ type: 'local_error', error: error.message }));
-                    });
+                    // Notify the website that we're connected
+                    ws.send(JSON.stringify({ type: 'local_connected' }));
                     
                     // Notify the extension that a website connected
                     availableExtension.ws.send(JSON.stringify({ type: 'website_connected' }));
@@ -115,7 +103,7 @@ wss.on('connection', (ws, req) => {
                 }
                 
             } else if (localConnection && localConnection.readyState === WebSocket.OPEN) {
-                // Forward website data to VS Code extension
+                // Forward website data to VS Code extension through the bridge
                 localConnection.send(data);
             }
             
