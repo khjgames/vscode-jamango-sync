@@ -198,8 +198,13 @@ function stopSync() {
         
         vscode.window.showInformationMessage('🛑 Jamango Sync stopped.');
         
-        // Set context for command palette
-        vscode.commands.executeCommand('setContext', 'jamango-sync.isActive', false);
+        // Set context for command palette (with error handling)
+        try {
+            vscode.commands.executeCommand('setContext', 'jamango-sync.isActive', false);
+        } catch (error) {
+            // Ignore errors during shutdown
+            console.log('Note: Could not set context during shutdown');
+        }
 
     } catch (error) {
         vscode.window.showErrorMessage(`❌ Error stopping Jamango Sync: ${error.message}`);
@@ -555,10 +560,18 @@ function updateStatusBar() {
 
 // This method is called when your extension is deactivated
 function deactivate() {
-    stopSync();
+    try {
+        stopSync();
+    } catch (error) {
+        console.log('Note: Error during stopSync in deactivate:', error.message);
+    }
     
     if (syncStatusBarItem) {
-        syncStatusBarItem.dispose();
+        try {
+            syncStatusBarItem.dispose();
+        } catch (error) {
+            console.log('Note: Error disposing status bar item:', error.message);
+        }
     }
     
     console.log('🎮 Jamango Sync extension deactivated.');
