@@ -72,6 +72,12 @@
         });
 
         function startExtensionConnection() {
+            // Don't create multiple connections
+            if (extensionConnected && websocket && websocket.readyState === WebSocket.OPEN) {
+                updateSyncStatus('🔗 Already connected to VS Code extension!');
+                return;
+            }
+            
             // Try to connect to VS Code extension
             connectToExtension();
             
@@ -81,6 +87,11 @@
 
         function connectToExtension() {
             try {
+                // Close any existing connection
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.close();
+                }
+                
                 // Try different connection methods
                 const connectionMethods = [
                     { type: 'websocket', url: 'wss://jamango-sync-proxy-private-production.up.railway.app' },  // Your Railway proxy
