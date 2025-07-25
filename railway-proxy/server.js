@@ -124,8 +124,30 @@ wss.on('connection', (ws, req) => {
         }
     });
     
+    // Add ping/pong to detect stale connections
+    let pingTimeout = null;
+    
+    function resetPingTimeout() {
+        if (pingTimeout) {
+            clearTimeout(pingTimeout);
+        }
+        pingTimeout = setTimeout(() => {
+            console.log('⏰ Connection timeout, closing stale connection');
+            ws.close();
+        }, 30000); // 30 second timeout
+    }
+    
+    resetPingTimeout();
+    
+    ws.on('pong', () => {
+        resetPingTimeout();
+    });
+    
     ws.on('close', () => {
         console.log('❌ Proxy connection closed');
+        if (pingTimeout) {
+            clearTimeout(pingTimeout);
+        }
         if (localConnection) {
             localConnection.close();
         }
@@ -137,6 +159,9 @@ wss.on('connection', (ws, req) => {
     
     ws.on('error', (error) => {
         console.error('❌ Proxy connection error:', error);
+        if (pingTimeout) {
+            clearTimeout(pingTimeout);
+        }
         if (localConnection) {
             localConnection.close();
         }
@@ -146,6 +171,15 @@ wss.on('connection', (ws, req) => {
         }
     });
 });
+
+// Periodic ping to keep connections alive
+setInterval(() => {
+    proxyConnections.forEach((connection, id) => {
+        if (connection.ws.readyState === WebSocket.OPEN) {
+            connection.ws.ping();
+        }
+    });
+}, 15000); // Ping every 15 seconds
 
 console.log('🔐 HTTPS WebSocket proxy ready for GitHub Pages compatibility');
 console.log('🚂 Deployed on Railway - always online!'); 

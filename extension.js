@@ -161,6 +161,17 @@ function stopSync() {
             fileWatcher = null;
         }
 
+        // Close Railway proxy connection
+        if (publicWebSocketClient) {
+            try {
+                console.log('🔗 Disconnecting from Railway proxy...');
+                publicWebSocketClient.close();
+                publicWebSocketClient = null;
+            } catch (error) {
+                console.error('Error closing Railway proxy connection:', error);
+            }
+        }
+
         // Close WebSocket connections
         if (websocketServer) {
             if (Array.isArray(websocketServer)) {
@@ -178,6 +189,9 @@ function stopSync() {
             }
             websocketServer = null;
         }
+
+        // Clear connected clients
+        connectedClients.clear();
 
         isSyncActive = false;
         updateStatusBar();
