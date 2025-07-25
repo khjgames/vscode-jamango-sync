@@ -7,6 +7,10 @@ const fs = require('fs');
 const path = require('path');
 const chokidar = require('chokidar');
 const WebSocket = require('ws');
+const https = require('https');
+const http = require('http');
+const crypto = require('crypto');
+const os = require('os');
 
 // Global variables
 let syncStatusBarItem;
@@ -15,6 +19,46 @@ let websocketServer = null;
 let isSyncActive = false;
 let currentWorkspacePath = null;
 let connectedClients = new Set();
+
+// SSL Certificate generation
+function generateSelfSignedCert() {
+    const certPath = path.join(os.tmpdir(), 'jamango-sync-cert');
+    
+    // Generate private key
+    const privateKey = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: {
+            type: 'spki',
+            format: 'pem'
+        },
+        privateKeyEncoding: {
+            type: 'pkcs8',
+            format: 'pem'
+        }
+    });
+
+    // Generate certificate
+    const cert = crypto.createCertificate();
+    cert.setPublicKey(privateKey.publicKey);
+    cert.setPrivateKey(privateKey.privateKey);
+    cert.setSerial('01');
+    cert.setSubject([
+        { shortName: 'CN', value: 'localhost' },
+        { shortName: 'O', value: 'Jamango Sync' },
+        { shortName: 'OU', value: 'VS Code Extension' }
+    ]);
+    cert.setIssuer([
+        { shortName: 'CN', value: 'localhost' },
+        { shortName: 'O', value: 'Jamango Sync' },
+        { shortName: 'OU', value: 'VS Code Extension' }
+    ]);
+    cert.sign(privateKey.privateKey, 'sha256');
+
+    return {
+        key: privateKey.privateKey,
+        cert: cert.getPEM()
+    };
+}
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -193,11 +237,35 @@ function connectToWebsite(websiteUrl) {
         
         // HTTPS WebSocket server (for GitHub Pages compatibility)
         try {
-            const httpsServer = new WebSocket.Server({ port: 8443 });
-            servers.push(httpsServer);
-            console.log('🔗 HTTPS WebSocket server listening on wss://localhost:8443');
+            // Generate self-signed certificate automatically
+            const sslCert = generateSelfSignedCert();
+            
+            // Create HTTPS server with generated certificate
+            const httpsServer = https.createServer({
+                key: sslCert.key,
+                cert: sslCert.cert
+            }, (req, res) => {
+                res.writeHead(200, { 'Content-Type': 'text/plain' });
+                res.end('Jamango Sync HTTPS WebSocket Server Running');
+            });
+            
+            const wssServer = new WebSocket.Server({ server: httpsServer });
+            servers.push(wssServer);
+            
+            httpsServer.listen(8443, () => {
+                console.log('🔗 HTTPS WebSocket server listening on wss://localhost:8443');
+                vscode.window.showInformationMessage('🔐 HTTPS WebSocket server ready for GitHub Pages compatibility');
+            });
         } catch (error) {
-            console.log('⚠️ HTTPS WebSocket server port 8443 already in use');
+            console.log('⚠️ HTTPS WebSocket server port 8443 already in use:', error.message);
+            // Fallback to HTTP on different port
+            try {
+                const fallbackServer = new WebSocket.Server({ port: 8444 });
+                servers.push(fallbackServer);
+                console.log('🔗 Fallback WebSocket server listening on ws://localhost:8444');
+            } catch (fallbackError) {
+                console.log('⚠️ Fallback port 8444 also in use');
+            }
         }
         
         // If no servers were created, try alternative ports

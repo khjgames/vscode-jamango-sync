@@ -82,14 +82,12 @@
         function connectToExtension() {
             try {
                 // Try different WebSocket URLs for the VS Code extension
-                // Include both HTTP and HTTPS for GitHub Pages compatibility
+                // Include both HTTP and HTTPS for maximum compatibility
                 const wsUrls = [
-                    'ws://localhost:8080',   // HTTP WebSocket server
                     'wss://localhost:8443',  // HTTPS WebSocket server (for GitHub Pages)
+                    'ws://localhost:8080',   // HTTP WebSocket server (for local development)
                     'ws://127.0.0.1:8080',   // Alternative localhost HTTP
-                    'wss://127.0.0.1:8443',  // Alternative localhost HTTPS
                     'ws://localhost:8081',   // Fallback HTTP port
-                    'ws://localhost:3001',   // Legacy fallback port
                 ];
 
                 let currentUrlIndex = 0;
