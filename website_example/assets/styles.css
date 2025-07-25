@@ -1,0 +1,239 @@
+@font-face {
+    font-family: 'CustomFont'; /* Define a name for your custom font */
+    src: url('balthazar.regular.ttf') format('truetype'); /* Provide the path to your font file */
+}
+
+#useless_external_css_id_selector {
+    padding-left: 0.03rem;
+}
+
+/* Reset some default styles */
+body { /*External CSS element selectors*/
+    background-color: #181A1B;
+    overflow-x: hidden;
+}
+
+html { /*External CSS element selectors*/
+    margin: 0;
+    padding: 0;
+    /*font-family: "Microsoft YaHei";*/
+    /*font-family: 'Balthazar', cursive; /* Set Balthazar as the default font */
+    /*font-family: 'CustomFont', sans-serif;*/ /* Apply the custom font to the entire website */
+    font-size: max(66.6666px, min(min(calc(66.6666px + 33.3333 * ((100vh - 710px) / 370)), calc(66.6666px + 33.3333 * ((100vw - 1280px) / 640))), 100px));
+}
+
+ul, ol { /*External CSS element selectors*/
+    margin-block-start: 0;
+    margin-block-end: 0;
+}
+
+h2, h4, h5 {
+    color: white;
+    font-family: "Cambria";
+    font-size: 0.24rem;
+} 
+h5 {
+    margin-block-start: 0.1rem;
+    margin-block-end: 0.1rem;
+}
+h4 {
+    font-size: 0.27rem;
+}
+h2 {
+    text-align: center;
+    font-size: 0.4rem;
+}
+table, th, td {
+    border: 0.04rem solid #181A1B;
+}
+p, li, th, td, q, blockquote{
+    color: white;
+    font-size: 0.21rem;
+    font-family: "Cambria";
+    text-align: left;
+}
+
+tr:nth-child(odd) {
+    background-color: #ffffff19;
+}
+tr:nth-child(even) {
+    background-color: #ffffff08;
+}
+
+th, td {
+    padding-left: 0.04rem;
+    padding-right: 0.04rem;
+    padding-top: 0.04rem;
+    padding-bottom: 0.04rem;
+    font-size: 0.18rem;
+}
+
+th {
+    font-size: 0.21rem;
+}
+/* learned variables (custom properties in CSS) from https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_custom_properties */
+/* Style the background video */
+/* Shrink from 1080 - 720p based on largest resolution (width or height) */
+
+.tl {/* External CSS class selectors, top-left class (combined with navbar or tl bg-video to */ 
+    top: 0;
+    left: 0;
+}
+
+.bg-video { /* External CSS class selectors */
+    --video-needed-min-scale: max(80px, max(100vw/16, 100vh/9)); /* to calculate smooth video scaling, choose the greater of 100vw/16 and 100vh/9 
+        scale is 120 at max, 80 at min
+    */
+    min-width: 100%;
+    min-height: 100%;
+    width: calc(var(--video-needed-min-scale)*16);
+    height: calc(var(--video-needed-min-scale)*9);
+    z-index: -99;
+    position: absolute;
+    background: transparent url("poster.jpg") 50% 50% / cover no-repeat ;
+}
+
+/* Style the navigation bar */
+.navbar {    
+    background: hsla(0,0%,8%,.75);
+    background-image: initial;
+    background-color: rgba(15, 16, 17, 0.75);
+    height: 0.7rem; /* note to self when converting between px, rem, em, vh 0.0661*viewport height is actually 6.61*vh */
+    min-width: 1000px;
+    width: 100%;
+    position: fixed; /* Fixed position to stay at the top */
+    z-index: 1; /* Place it on top of everything else */
+    box-shadow: 0 .04rem .06rem 0 rgba(0,0,0,.3);   
+    display: flex;
+    justify-content: center;
+    align-items: center; /* or align-self: center; */
+}
+
+.navbar_main {
+    width: 1280px;
+    display: flex;
+    box-sizing: border-box;
+}
+
+.nav_img {
+    padding-left: 20px;
+    padding-right: 0.2rem;
+    z-index: 2;
+    max-width: 2.1rem;
+    max-height: 0.55rem;
+    width: auto;
+    height: auto;
+    transform: translateY(0.05rem);
+}
+    
+.nav_icon {
+    padding-left: 0.31rem;
+    padding-right: 0px;
+    padding-top: 0.65rem;
+    z-index: 2;
+    max-width: 0.4rem;
+    max-height: 0.4rem;
+    width: auto;
+    height: auto;
+    transform: translateY(0.05rem);
+}
+
+/* Style the navigation links */
+.navbar .nav_b,
+.navbar .nav_a--active,
+.navbar .nav_a {
+    color: white;
+    text-decoration: none;
+    display: inline-block; 
+    /*min-width: 1rem;*/
+    /*height: 0.1rem;*/
+    font-size: 0.16rem;
+    padding: 0 0.27rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.1rem;
+    z-index: 1;
+    position: relative;
+    top:-0.2rem;
+
+    min-width: 0.7rem;
+    height: .1rem;
+    cursor: pointer;
+    position: relative;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+}
+
+/* Style the navigation links on hover */
+.navbar .nav_b {
+    font-size: 0;
+    padding: 0 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    min-width: 0;
+    top:0;
+    height:0;
+}
+
+.navbar .nav_a--active,
+.navbar .nav_a:hover {
+    display: flexbox; 
+    color: #E6BC87; /* Change text color on hover */
+    position: relative; /* Add relative positioning for pseudo-element */
+}
+
+.navbar .nav_a--active::after,
+.navbar .nav_a:hover::after {
+    display: flexbox; 
+    content: ""; /* Add pseudo-element */
+    height: 3px;
+    width: 100%;
+    background-color: #6E4616; /* Add the bottom line color */
+    position: absolute;
+    bottom: -0.19rem;
+    left: 0;
+}
+
+.internal_css_img {
+    border-radius: 0.25rem;
+    width: 100%;
+    max-width: 5.5rem;
+    height: auto;
+    max-height: 3.5rem;
+}
+.internal_css_p {
+    text-align: center;
+    color:rgb(245, 245, 245);
+    text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.6), 1px -1px 0 rgba(0, 0, 0, 0.6), -1px 1px 0 rgba(0, 0, 0, 0.6), 1px 1px 0 rgba(0, 0, 0, 0.6);
+}
+.internal_css_panel {
+    z-index: -50;
+    position: absolute; 
+    top: -0.1rem; 
+    left: -0.1rem; 
+    width: calc(100% + 0.2rem); 
+    height: calc(100% + 0.2rem); 
+    background: hsla(0,0%,8%,.55);
+    border-radius: 0.25rem;
+}
+
+/* For WebKit-based browsers (Chrome, Safari, etc.) */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #666;
+    border-radius: 10px;
+    border: 3px solid #000;
+}

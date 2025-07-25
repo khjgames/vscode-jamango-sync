@@ -1,0 +1,117 @@
+{
+	"name": "vscode-jamango-sync",
+	"displayName": "Jamango Sync (Unofficial)",
+	"description": "Unofficial community extension for real-time file sync between VS Code and Jamango website. Not affiliated with Jamango.",
+	"icon": "assets/Mango.png",
+	"version": "0.1.1",
+	"publisher": "KHJGames",
+	"engines": {
+		"vscode": "^1.78.0"
+	},
+	"categories": [
+		"Other",
+		"Web"
+	],
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./extension.js",
+	"contributes": {
+		"configuration": {
+			"title": "Jamango Sync",
+			"properties": {
+				"jamango-sync.websiteUrl": {
+					"type": "string",
+					"default": "http://localhost:3000",
+					"description": "The URL of your Jamango website for file syncing"
+				},
+				"jamango-sync.syncInterval": {
+					"type": "number",
+					"default": 5000,
+					"description": "How often to check for file changes (in milliseconds)"
+				},
+				"jamango-sync.watchExtensions": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": [".json", ".css", ".html", ".txt", ".ts", ".tsx"],
+					"description": "File extensions to watch for changes (JSON, CSS, HTML, TEXT, TYPESCRIPT, and more configurable)"
+				}
+			}
+		},
+		"commands": [
+			{
+				"command": "jamango-sync.startSync",
+				"title": "Start Jamango Sync",
+				"category": "Jamango"
+			},
+			{
+				"command": "jamango-sync.stopSync",
+				"title": "Stop Jamango Sync",
+				"category": "Jamango"
+			},
+			{
+				"command": "jamango-sync.syncNow",
+				"title": "Sync Files Now",
+				"category": "Jamango"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "jamango-sync.startSync",
+					"when": "!jamango-sync.isActive"
+				},
+				{
+					"command": "jamango-sync.stopSync",
+					"when": "jamango-sync.isActive"
+				},
+				{
+					"command": "jamango-sync.syncNow"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"lint": "eslint .",
+		"pretest": "npm run lint",
+		"test": "node ./test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/glob": "^8.1.0",
+		"@types/mocha": "^10.0.1",
+		"@types/node": "^16.0.0",
+		"@types/vscode": "^1.78.0",
+		"@vscode/test-electron": "^2.3.0",
+		"eslint": "^8.39.0",
+		"glob": "^8.1.0",
+		"mocha": "^10.2.0",
+		"typescript": "^5.0.4"
+	},
+	"dependencies": {
+		"ws": "^8.13.0",
+		"chokidar": "^3.5.3"
+	},
+	"directories": {
+		"test": "test"
+	},
+	"keywords": [
+		"jamango",
+		"sync",
+		"file-sync",
+		"websocket",
+		"real-time",
+		"development"
+	],
+	"author": "KHJGames",
+	"license": "ISC",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/khjgames/vscode-jamango-sync"
+	},
+	"bugs": {
+		"url": "https://github.com/khjgames/vscode-jamango-sync/issues"
+	},
+	"homepage": "https://github.com/khjgames/vscode-jamango-sync#readme"
+} 

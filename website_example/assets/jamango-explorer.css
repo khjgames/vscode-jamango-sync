@@ -1,0 +1,125 @@
+/* Jamango Explorer & Preview - Dark Theme */
+/* Override inherited font sizes with explicit pixel values */
+
+#jamango-explorer-container {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 70vh;
+  background: #181a1b;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px #000a;
+  overflow: hidden;
+  margin: 2rem auto;
+  max-width: 1200px;
+  font-size: 14px !important; /* Override inherited font size */
+}
+
+#jamango-explorer {
+  width: 30%;
+  min-width: 220px;
+  max-width: 350px;
+  background: #23272e;
+  color: #e0e0e0;
+  padding: 16px 8px;
+  overflow-y: auto;
+  border-right: 1px solid #222;
+  font-family: 'Segoe UI', 'Fira Mono', 'Consolas', monospace;
+  font-size: 14px !important; /* Explicit font size */
+  line-height: 1.4;
+}
+
+#jamango-explorer ul {
+  list-style: none;
+  padding-left: 16px;
+  margin: 0;
+  font-size: 14px !important;
+}
+
+#jamango-explorer li {
+  cursor: pointer;
+  padding: 4px 0 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  user-select: none;
+  font-size: 14px !important;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#jamango-explorer li:hover, #jamango-explorer li.selected {
+  background: #2d323b;
+  color: #fff;
+}
+
+#jamango-explorer .folder {
+  font-weight: bold;
+  color: #7ecfff;
+  font-size: 14px !important;
+}
+
+#jamango-explorer .file {
+  color: #e0e0e0;
+  font-weight: normal;
+  font-size: 14px !important;
+}
+
+#jamango-preview {
+  width: 40%;
+  min-width: 320px;
+  background: #181a1b;
+  color: #e0e0e0;
+  padding: 24px 32px;
+  font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 14px !important; /* Explicit font size */
+  overflow-y: auto;
+  border-left: 1px solid #222;
+  white-space: pre-wrap;
+  word-break: break-word;
+  height: 100%;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+#jamango-preview .preview-title {
+  font-size: 16px !important;
+  font-weight: bold;
+  color: #7ecfff;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+#jamango-preview .preview-content {
+  background: #23272e;
+  border-radius: 6px;
+  padding: 16px;
+  min-height: 300px;
+  max-height: 60vh;
+  overflow-y: auto;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 14px !important;
+  white-space: pre-wrap;
+  user-select: text;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  #jamango-explorer-container {
+    flex-direction: column;
+    height: auto;
+  }
+  #jamango-explorer, #jamango-preview {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    border: none;
+    padding: 16px;
+  }
+  #jamango-preview {
+    padding: 16px;
+  }
+} 

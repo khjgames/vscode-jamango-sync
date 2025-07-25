@@ -1,0 +1,380 @@
+<!-- Note to self for learner rem = root element measurement, 0.0661 -->
+<!-- em = element measurement, vh = viewport height, vw viewport width -->
+<!-- converting between px, rem, em, vh 0.0661*viewport height is actually 6.61*vh -->
+<!--         -->
+<!--     
+    -->
+<!--         -->
+<!-- Chicken is good food. -->
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="assets/styles.css">
+    <link rel="stylesheet" href="assets/jamango-explorer.css">
+    <title>VS Code - Jamango Sync</title>
+    <link rel="icon"> <!-- Favicon -->
+</head>
+
+<body>
+    <!--
+        use image map on regions to give brief description in world.html
+        (ex: click darkgrove, scroll to spooky section, click totenheim scroll to winter section)
+        use link to a different place on your webpage
+    -->
+    <div class="home">
+        <div class="tl navbar">
+            <div class="tl navbar_main">
+                <a class="nav_a--active" href="">JAMANGO SYNC</a>
+            </div>
+        </div>
+        <div style="padding-top: 1.6rem;"> <!-- -->
+            <div style="flex: 1 0 0; width: 10%; text-align: center; margin-left: 20%;"> 
+                <div style="position: relative;">
+                    <p id="Folder_Sync" class="internal_css_p"> > Sync Folder < </p>
+                    <div class="internal_css_panel"></div> <!-- -->
+                </div> <!-- -->
+            </div>
+            <div style="flex: 1 0 0; width: 50%; text-align: center; padding-top: 0.2rem; "> 
+            
+            </div>
+        </div>
+        <div id="jamango-explorer-container" style="margin-top: 0.5rem !important;">
+            <div id="jamango-explorer"></div>
+            <div id="jamango-preview">
+                <div class="preview-title">Select a file to preview</div>
+                <div class="preview-content">No file selected.</div>
+            </div>
+        </div>
+    </div>
+    <script> // Javascript go brr
+        function hover(element, new_src) {
+            element.setAttribute('src', new_src);
+        }
+
+        function unhover(element, new_src) {
+            element.setAttribute('src', new_src);
+        }
+
+        // Folder sync functionality
+        let selectedFolderPath = null;
+        let websocket = null;
+        let syncInterval = null;
+        let extensionConnected = false;
+
+        // Add click event listener to the Folder_Sync element
+        document.getElementById('Folder_Sync').addEventListener('click', () => {
+            updateSyncStatus('🔄 Connecting to VS Code extension...');
+            startExtensionConnection();
+        });
+
+        function startExtensionConnection() {
+            // Try to connect to VS Code extension
+            connectToExtension();
+            
+            // Also start polling as backup
+            startPolling();
+        }
+
+        function connectToExtension() {
+            try {
+                // Try different WebSocket URLs for the VS Code extension
+                const wsUrls = [
+                    'ws://localhost:8080',  // VS Code extension server
+                    'ws://127.0.0.1:8080', // Alternative localhost
+                    'ws://localhost:3001',  // Fallback port
+                ];
+
+                let currentUrlIndex = 0;
+                
+                function tryConnect() {
+                    if (currentUrlIndex >= wsUrls.length) {
+                        updateSyncStatus('⚠️ VS Code extension not found. Make sure the extension is installed and running.');
+                        return;
+                    }
+
+                    const wsUrl = wsUrls[currentUrlIndex];
+                    console.log(`Trying to connect to: ${wsUrl}`);
+                    
+                    websocket = new WebSocket(wsUrl);
+                    
+                    websocket.onopen = () => {
+                        extensionConnected = true;
+                        updateSyncStatus('🔗 Connected to VS Code extension! Real-time sync active.');
+                        
+                        // Request initial file sync - extension will use its workspace
+                        setTimeout(() => {
+                            websocket.send(JSON.stringify({
+                                type: 'syncRequest'
+                            }));
+                        }, 1000);
+                    };
+                    
+                    websocket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            handleExtensionMessage(data);
+                        } catch (error) {
+                            console.error('Error parsing extension message:', error);
+                        }
+                    };
+                    
+                    websocket.onclose = () => {
+                        extensionConnected = false;
+                        updateSyncStatus('❌ VS Code extension disconnected. Trying to reconnect...');
+                        
+                        // Try to reconnect after a delay
+                        setTimeout(() => {
+                            currentUrlIndex++;
+                            tryConnect();
+                        }, 2000);
+                    };
+                    
+                    websocket.onerror = () => {
+                        console.log(`Failed to connect to ${wsUrl}`);
+                        websocket.close();
+                    };
+                }
+                
+                tryConnect();
+                
+            } catch (error) {
+                console.error('Error connecting to extension:', error);
+                updateSyncStatus('⚠️ Failed to connect to VS Code extension.');
+            }
+        }
+
+        function handleExtensionMessage(data) {
+            console.log('🔍 Received extension message:', data);
+            switch (data.type) {
+                case 'fileList':
+                    console.log('📁 Processing fileList with:', data.files.length, 'files,', data.folders.length, 'folders');
+                    // Store the workspace path from the extension
+                    if (data.structure && data.structure.workspacePath) {
+                        selectedFolderPath = data.structure.workspacePath;
+                        showVSCodeLaunchOption();
+                    }
+                    updateFileList(data.files, data.folders, data.structure);
+                    updateSyncStatus(`✅ Received ${data.files.length} files and ${data.folders.length} folders from VS Code extension.`);
+                    break;
+                    
+                case 'fileUpdate':
+                    console.log('📝 File update:', data.filePath);
+                    updateSyncStatus(`📝 File updated: ${data.filePath}`);
+                    // You could update the file list here if needed
+                    break;
+                    
+                case 'pong':
+                    // Extension is responding to ping
+                    break;
+                    
+                default:
+                    console.log('Received message from extension:', data);
+            }
+        }
+
+        function startPolling() {
+            // Poll every 10 seconds to check extension status
+            syncInterval = setInterval(() => {
+                if (!extensionConnected) {
+                    updateSyncStatus('🔄 Checking for VS Code extension...');
+                    
+                    // Try to reconnect
+                    setTimeout(() => {
+                        if (!extensionConnected) {
+                            connectToExtension();
+                        }
+                    }, 1000);
+                }
+            }, 10000);
+        }
+
+        // --- Jamango Explorer/Preview Widget ---
+        let jamangoFileTree = {};
+        let jamangoFileMap = {};
+        let selectedFilePath = null;
+
+        function buildFileTree(files) {
+            // files: [{path, content}]
+            const root = {};
+            jamangoFileMap = {};
+            files.forEach(file => {
+                const parts = file.path.split(/[\\\/]/);
+                let node = root;
+                for (let i = 0; i < parts.length; i++) {
+                    const part = parts[i];
+                    if (i === parts.length - 1) {
+                        // File
+                        node[part] = { __file: true, path: file.path, content: file.content };
+                        jamangoFileMap[file.path] = file.content;
+                    } else {
+                        if (!node[part]) node[part] = {};
+                        node = node[part];
+                    }
+                }
+            });
+            return root;
+        }
+
+        function renderFileTree(node, parentPath = "") {
+            let html = '<ul>';
+            for (const key of Object.keys(node).sort()) {
+                const item = node[key];
+                const fullPath = parentPath ? parentPath + "/" + key : key;
+                if (item.__file) {
+                    html += `<li class="file" data-path="${fullPath}">📄 ${key}</li>`;
+                } else {
+                    html += `<li class="folder">📁 ${key}`;
+                    html += renderFileTree(item, fullPath);
+                    html += '</li>';
+                }
+            }
+            html += '</ul>';
+            return html;
+        }
+
+        function updateExplorerWidget(files) {
+            console.log('🌳 Building explorer widget with files:', files);
+            jamangoFileTree = buildFileTree(files);
+            console.log('🌳 Built file tree:', jamangoFileTree);
+            const explorerDiv = document.getElementById('jamango-explorer');
+            const treeHtml = renderFileTree(jamangoFileTree);
+            console.log('🌳 Rendered HTML:', treeHtml);
+            explorerDiv.innerHTML = treeHtml;
+            // Add click listeners
+            explorerDiv.querySelectorAll('.file').forEach(el => {
+                el.onclick = function() {
+                    document.querySelectorAll('#jamango-explorer .file').forEach(f => f.classList.remove('selected'));
+                    el.classList.add('selected');
+                    showFilePreview(el.getAttribute('data-path'));
+                };
+            });
+        }
+
+        function showFilePreview(filePath) {
+            selectedFilePath = filePath;
+            const previewDiv = document.getElementById('jamango-preview');
+            const titleDiv = previewDiv.querySelector('.preview-title');
+            const contentDiv = previewDiv.querySelector('.preview-content');
+            titleDiv.textContent = filePath;
+            const content = jamangoFileMap[filePath] || '';
+            contentDiv.textContent = content;
+        }
+
+        // --- Hook into file sync update ---
+        function updateFileList(files, folders, structure) {
+            if (files && files.length > 0) {
+                updateExplorerWidget(files);
+            } else {
+                document.getElementById('jamango-explorer').innerHTML = '<div style="color:#888;padding:1rem;">No files found or extension not connected.</div>';
+                document.getElementById('jamango-preview').querySelector('.preview-title').textContent = 'Select a file to preview';
+                document.getElementById('jamango-preview').querySelector('.preview-content').textContent = 'No file selected.';
+            }
+        }
+
+        function showVSCodeLaunchOption() {
+            // Remove existing VS Code button if any
+            const existingButton = document.querySelector('.vscode-launch-btn');
+            if (existingButton) {
+                existingButton.remove();
+            }
+
+            // Create VS Code launch button
+            const vsCodeButton = document.createElement('button');
+            vsCodeButton.textContent = '🚀 Launch in VS Code';
+            vsCodeButton.className = 'vscode-launch-btn';
+            vsCodeButton.style.cssText = `
+                background: #007acc;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 6px;
+                cursor: pointer;
+                margin-top: 15px;
+                font-size: 14px;
+                font-weight: bold;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                transition: background 0.2s;
+            `;
+            
+            vsCodeButton.onmouseover = () => {
+                vsCodeButton.style.background = '#005a9e';
+            };
+            
+            vsCodeButton.onmouseout = () => {
+                vsCodeButton.style.background = '#007acc';
+            };
+            
+            vsCodeButton.onclick = () => {
+                launchInVSCode();
+            };
+
+            // Add button to the page
+            const folderSyncElement = document.getElementById('Folder_Sync');
+            folderSyncElement.parentNode.appendChild(vsCodeButton);
+        }
+
+        function launchInVSCode() {
+            if (!selectedFolderPath) {
+                updateSyncStatus('❌ No workspace path available from extension.');
+                return;
+            }
+
+            try {
+                // Create VS Code URI for the folder
+                const vscodeUri = `vscode://file/${selectedFolderPath}`;
+                
+                // Try to open VS Code
+                window.open(vscodeUri, '_blank');
+                
+                // Show sync status
+                updateSyncStatus('🚀 VS Code launched! Real-time sync active - changes will appear automatically.');
+                
+            } catch (error) {
+                console.error('Error launching VS Code:', error);
+                updateSyncStatus('❌ Failed to launch VS Code. Make sure VS Code is installed.');
+            }
+        }
+
+        function updateSyncStatus(message) {
+            // Create or update status display
+            let statusElement = document.querySelector('.sync-status');
+            if (!statusElement) {
+                statusElement = document.createElement('div');
+                statusElement.className = 'sync-status';
+                statusElement.style.cssText = `
+                    margin-top: 15px;
+                    padding: 12px;
+                    background: #23272e;
+                    border-radius: 6px;
+                    font-size: 13px;
+                    color: #e0e0e0;
+                    border-left: 4px solid #7ecfff;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                `;
+                
+                const folderSyncElement = document.getElementById('Folder_Sync');
+                folderSyncElement.parentNode.appendChild(statusElement);
+            }
+            
+            statusElement.textContent = message;
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (websocket) {
+                websocket.close();
+            }
+            if (syncInterval) {
+                clearInterval(syncInterval);
+            }
+        });
+    </script>
+</body>
+
+</html>
+
