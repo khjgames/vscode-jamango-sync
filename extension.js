@@ -327,6 +327,8 @@ function connectToWebsite(websiteUrl) {
             publicWebSocketClient.on('message', (data) => {
                 try {
                     const message = JSON.parse(data);
+                    console.log('📥 Extension received message from Railway proxy:', JSON.stringify(message));
+                    
                     if (message.type === 'website_connected') {
                         console.log('🌐 Website connected through Railway proxy');
                         // Add the proxy connection as a client
@@ -338,6 +340,7 @@ function connectToWebsite(websiteUrl) {
                         const watchExtensions = config.get('watchExtensions', ['.json', '.css', '.html', '.txt', '.ts', '.tsx']);
                         
                         getFileList(currentWorkspacePath, watchExtensions).then(fileData => {
+                            console.log('📤 Sending file list through Railway proxy:', fileData.files.length, 'files');
                             sendFileList(fileData);
                         });
                     } else {
@@ -403,6 +406,9 @@ function sendFileUpdate(action, filePath) {
 }
 
 function sendFileList(fileData) {
+    console.log('📤 sendFileList called with:', fileData.files.length, 'files,', fileData.folders.length, 'folders');
+    console.log('📤 connectedClients size:', connectedClients.size);
+    
     if (websocketServer) {
         // Read content for all files
         const filesWithContent = [];
@@ -432,12 +438,20 @@ function sendFileList(fileData) {
             timestamp: new Date().toISOString()
         };
         
+        console.log('📤 Broadcasting fileList to', connectedClients.size, 'clients');
+        
         // Broadcast to all connected clients
-        connectedClients.forEach(client => {
+        connectedClients.forEach((client, index) => {
+            console.log(`📤 Sending to client ${index}, readyState:`, client.readyState);
             if (client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify(message));
+                console.log(`📤 Sent fileList to client ${index}`);
+            } else {
+                console.log(`📤 Client ${index} not ready, state:`, client.readyState);
             }
         });
+    } else {
+        console.log('❌ No websocketServer available');
     }
 }
 

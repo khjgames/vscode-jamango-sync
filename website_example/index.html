@@ -141,23 +141,29 @@
                         websocket.onmessage = (event) => {
                             try {
                                 const data = JSON.parse(event.data);
+                                console.log('📥 Website received message:', JSON.stringify(data));
                                 
                                 // Handle proxy messages
                                 if (data.type === 'local_connected') {
+                                    console.log('🔗 Website received local_connected from proxy');
                                     updateSyncStatus('🔗 Connected to VS Code extension! Real-time sync active.');
                                     
                                     // Request initial file sync through proxy
                                     setTimeout(() => {
+                                        console.log('📤 Website sending syncRequest to proxy');
                                         websocket.send(JSON.stringify({
                                             type: 'syncRequest'
                                         }));
                                     }, 1000);
                                 } else if (data.type === 'local_disconnected') {
+                                    console.log('❌ Website received local_disconnected from proxy');
                                     updateSyncStatus('❌ VS Code extension disconnected');
                                 } else if (data.type === 'local_error') {
+                                    console.log('❌ Website received local_error from proxy:', data.error);
                                     updateSyncStatus(`❌ VS Code extension error: ${data.error}`);
                                 } else {
                                     // Regular extension message
+                                    console.log('📥 Website received extension message:', data.type);
                                     handleExtensionMessage(data);
                                 }
                             } catch (error) {
